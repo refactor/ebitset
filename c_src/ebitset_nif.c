@@ -30,6 +30,54 @@ static ERL_NIF_TERM new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     return ret;
 }
 
+static ERL_NIF_TERM copy(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    cbs_context_t *src = NULL;
+    if (argc != 1 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&src))
+        return enif_make_badarg(env);
+    cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
+    res->b = bitset_copy(src->b);
+
+    ERL_NIF_TERM ret = enif_make_resource(env, res);
+    enif_release_resource(res);
+    return ret;
+}
+
+static ERL_NIF_TERM set_union(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    cbs_context_t *s1 = NULL;
+    cbs_context_t *s2 = NULL;
+    if (argc != 2 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
+            !enif_get_resource(env, argv[1], res_type, (void**)&s2))
+        return enif_make_badarg(env);
+    cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
+    res->b = bitset_copy(s1->b);
+    bitset_inplace_union(res->b, s2->b);
+
+    ERL_NIF_TERM ret = enif_make_resource(env, res);
+    enif_release_resource(res);
+    return ret;
+}
+
+static ERL_NIF_TERM intersection(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    cbs_context_t *s1 = NULL;
+    cbs_context_t *s2 = NULL;
+    if (argc != 2 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
+            !enif_get_resource(env, argv[1], res_type, (void**)&s2))
+        return enif_make_badarg(env);
+    cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
+    res->b = bitset_copy(s1->b);
+    bitset_inplace_intersection(res->b, s2->b);
+
+    ERL_NIF_TERM ret = enif_make_resource(env, res);
+    enif_release_resource(res);
+    return ret;
+}
+
 static ERL_NIF_TERM count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     cbs_context_t *res = NULL;
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
@@ -39,6 +87,32 @@ static ERL_NIF_TERM count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     LOG("cnt: %u", cnt);
     return enif_make_uint64(env, cnt);
 }
+
+static ERL_NIF_TERM set(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    cbs_context_t *res = NULL;
+    ErlNifUInt64 i = 0;
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    if (argc != 2 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&res) ||
+            !enif_get_uint64(env, argv[1], &i))
+        return enif_make_badarg(env);
+    bitset_set(res->b, i);
+    return argv[0];
+}
+
+static ERL_NIF_TERM get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    cbs_context_t *res = NULL;
+    ErlNifUInt64 i = 0;
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    if (argc != 2 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&res) ||
+            !enif_get_uint64(env, argv[1], &i))
+        return enif_make_badarg(env);
+    if (bitset_get(res->b, i)) 
+        return ATOM_TRUE;
+    return ATOM_FALSE;
+}
+
 
 static int nifload(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info) {
     *priv_data = enif_open_resource_type(env, NULL,
@@ -58,8 +132,13 @@ static int nifload(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info) {
 }
 
 static ErlNifFunc nif_funcs[] = {
-    {"new",  0, new},
+    {"new",   0, new},
+    {"copy",  1, copy},
+    {"union", 2, set_union},
+    {"intersection", 2, intersection},
+    {"set",   2, set},
+    {"get",   2, get},
     {"count",  1, count},
 };
-    
+
 ERL_NIF_INIT(ebitset, nif_funcs, nifload, NULL,NULL,NULL)
