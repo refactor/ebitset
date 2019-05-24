@@ -61,6 +61,17 @@ static ERL_NIF_TERM set_union(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
     return ret;
 }
 
+static ERL_NIF_TERM union_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    cbs_context_t *s1 = NULL;
+    cbs_context_t *s2 = NULL;
+    if (argc != 2 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
+            !enif_get_resource(env, argv[1], res_type, (void**)&s2))
+        return enif_make_badarg(env);
+    return enif_make_uint64(env, bitset_union_count(s1->b, s2->b));
+}
+
 static ERL_NIF_TERM intersection(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     cbs_context_t *s1 = NULL;
@@ -78,14 +89,53 @@ static ERL_NIF_TERM intersection(ErlNifEnv* env, int argc, const ERL_NIF_TERM ar
     return ret;
 }
 
+static ERL_NIF_TERM intersects(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    cbs_context_t *s1 = NULL;
+    cbs_context_t *s2 = NULL;
+    if (argc != 2 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
+            !enif_get_resource(env, argv[1], res_type, (void**)&s2))
+        return enif_make_badarg(env);
+    if (bitset_intersection_count(s1->b, s2->b) > 0) {
+        return ATOM_TRUE;
+    }
+    return ATOM_FALSE;
+}
+
+static ERL_NIF_TERM difference(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    cbs_context_t *s1 = NULL;
+    cbs_context_t *s2 = NULL;
+    if (argc != 2 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
+            !enif_get_resource(env, argv[1], res_type, (void**)&s2))
+        return enif_make_badarg(env);
+    cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
+    res->b = bitset_copy(s1->b);
+    bitset_inplace_difference(res->b, s2->b);
+
+    ERL_NIF_TERM ret = enif_make_resource(env, res);
+    enif_release_resource(res);
+    return ret;
+}
+
 static ERL_NIF_TERM count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     cbs_context_t *res = NULL;
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     if (argc != 1 || !enif_get_resource(env, argv[0], res_type, (void**)&res))
         return enif_make_badarg(env);
     const size_t cnt = bitset_count(res->b);
-    LOG("cnt: %u", cnt);
     return enif_make_uint64(env, cnt);
+}
+
+static ERL_NIF_TERM minimum(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    cbs_context_t *res = NULL;
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    if (argc != 1 || !enif_get_resource(env, argv[0], res_type, (void**)&res))
+        return enif_make_badarg(env);
+    const size_t minimum = bitset_minimum(res->b);
+    return enif_make_uint64(env, minimum);
 }
 
 static ERL_NIF_TERM set(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -98,6 +148,15 @@ static ERL_NIF_TERM set(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
         return enif_make_badarg(env);
     bitset_set(res->b, i);
     return argv[0];
+}
+
+static ERL_NIF_TERM maximum(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    cbs_context_t *res = NULL;
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    if (argc != 1 || !enif_get_resource(env, argv[0], res_type, (void**)&res))
+        return enif_make_badarg(env);
+    const size_t maximum = bitset_maximum(res->b);
+    return enif_make_uint64(env, maximum);
 }
 
 static ERL_NIF_TERM get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -135,10 +194,15 @@ static ErlNifFunc nif_funcs[] = {
     {"new",   0, new},
     {"copy",  1, copy},
     {"union", 2, set_union},
+    {"union_count", 2, union_count},
     {"intersection", 2, intersection},
+    {"intersects", 2, intersects},
+    {"difference", 2, difference},
     {"set",   2, set},
     {"get",   2, get},
     {"count",  1, count},
+    {"minimum",  1, minimum},
+    {"maximum",  1, maximum},
 };
 
 ERL_NIF_INIT(ebitset, nif_funcs, nifload, NULL,NULL,NULL)

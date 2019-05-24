@@ -2,8 +2,13 @@
 -export([new/0]).
 -export([copy/1]).
 -export([union/2]).
+-export([union_count/2]).
 -export([intersection/2]).
+-export([intersects/2]).
+-export([difference/2]).
 -export([count/1]).
+-export([minimum/1]).
+-export([maximum/1]).
 -export([set/2]).
 -export([get/2]).
 
@@ -30,8 +35,20 @@ copy(_Bitset) ->
 union(_Bitset1, _Bitset2) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
+-spec union_count(reference(), reference()) -> non_neg_integer().
+union_count(_Bitset1, _Bitset2) ->
+    erlang:nif_error({nif_not_loaded, ?MODULE}).
+
 -spec intersection(reference(), reference()) -> reference().
 intersection(_Bitset1, _Bitset2) ->
+    erlang:nif_error({nif_not_loaded, ?MODULE}).
+
+-spec intersects(reference(), reference()) -> boolean().
+intersects(_Bitset1, _Bitset2) ->
+    erlang:nif_error({nif_not_loaded, ?MODULE}).
+
+-spec difference(reference(), reference()) -> reference().
+difference(_Bitset1, _Bitset2) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
 -spec set(reference(), non_neg_integer()) -> reference().
@@ -42,5 +59,14 @@ set(_Bitset, _Idx) ->
 get(_Bitset, _Idx) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
+-spec count(reference()) -> non_neg_integer().
 count(_Bitset) ->
+    erlang:nif_error({nif_not_loaded, ?MODULE}).
+
+-spec minimum(reference()) -> non_neg_integer().
+minimum(_Bitset) ->
+    erlang:nif_error({nif_not_loaded, ?MODULE}).
+
+-spec maximum(reference()) -> non_neg_integer().
+maximum(_Bitset) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
