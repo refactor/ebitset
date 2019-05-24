@@ -8,11 +8,17 @@
 
 #include "portability.h"
 
+#define BITILE_SIZE 256
+
+// 8KB for a 256x256 bitile
+#define BITSET_256x256_ARRSZ 1024
+// 32KB for a 512x512 bitile
+#define BITSET_512x512_ARRSZ 4096
+
 struct bitset_s {
-    uint64_t * restrict array;
     size_t arraysize;
     size_t capacity;
-
+    uint64_t * restrict array;
 };
 
 typedef struct bitset_s bitset_t;

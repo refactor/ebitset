@@ -12,6 +12,8 @@
 -export([set/2]).
 -export([get/2]).
 
+-export([tilesize/0]).
+
 -on_load(init/0).
 
 init() ->
@@ -69,4 +71,8 @@ minimum(_Bitset) ->
 
 -spec maximum(reference()) -> non_neg_integer().
 maximum(_Bitset) ->
+    erlang:nif_error({nif_not_loaded, ?MODULE}).
+
+-spec tilesize() -> 256 | 512.
+tilesize() ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).

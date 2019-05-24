@@ -1,4 +1,5 @@
 #include <erl_nif.h>
+#include <limits.h>
 #include <errno.h>
 
 #include "cbitset/bitset.h"
@@ -172,6 +173,9 @@ static ERL_NIF_TERM get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     return ATOM_FALSE;
 }
 
+static ERL_NIF_TERM tilesize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    return enif_make_uint(env, BITILE_SIZE);
+}
 
 static int nifload(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info) {
     *priv_data = enif_open_resource_type(env, NULL,
@@ -203,6 +207,7 @@ static ErlNifFunc nif_funcs[] = {
     {"count",  1, count},
     {"minimum",  1, minimum},
     {"maximum",  1, maximum},
+    {"tilesize", 0, tilesize}
 };
 
 ERL_NIF_INIT(ebitset, nif_funcs, nifload, NULL,NULL,NULL)
