@@ -16,9 +16,8 @@
 #define BITSET_512x512_ARRSZ 4096
 
 struct bitset_s {
-    size_t arraysize;
-    size_t capacity;
-    uint64_t * restrict array;
+    size_t _ARRAYSIZE;
+    uint64_t  array[];
 };
 
 typedef struct bitset_s bitset_t;
@@ -43,60 +42,34 @@ bool bitset_resize( bitset_t *bitset,  size_t newarraysize, bool padwithzeroes )
 
 /* returns how many bytes of memory the backend buffer uses */
 static inline size_t bitset_size_in_bytes(const bitset_t *bitset) {
-  return bitset->arraysize*sizeof(uint64_t);
+  return bitset->_ARRAYSIZE*sizeof(uint64_t);
 }
 
 /* returns how many bits can be accessed */
 static inline size_t bitset_size_in_bits(const bitset_t *bitset) {
-  return bitset->arraysize * 64;
+  return bitset->_ARRAYSIZE * 64;
 }
 
 /* returns how many words (64-bit) of memory the backend buffer uses */
 static inline size_t bitset_size_in_words(const bitset_t *bitset) {
-  return bitset->arraysize;
+  return bitset->_ARRAYSIZE;
 }
 
-
-/* Grow the bitset so that it can support newarraysize * 64 bits with padding. Return true in case of success, false for failure. */
-static inline bool bitset_grow( bitset_t *bitset,  size_t newarraysize ) {
-  if (bitset->capacity < newarraysize) {
-    uint64_t *newarray;
-    bitset->capacity = newarraysize * 2;
-    if ((newarray = (uint64_t *) realloc(bitset->array, sizeof(uint64_t) * bitset->capacity)) == NULL) {
-      free(bitset->array);
-      return false;
-    }
-    bitset->array = newarray;
-  }
-  memset(bitset->array + bitset->arraysize ,0,sizeof(uint64_t) * (newarraysize - bitset->arraysize));
-  bitset->arraysize = newarraysize;
-  return true; // success!
-}
-
-/* attempts to recover unused memory, return false in case of reallocation failure */
-bool bitset_trim(bitset_t *bitset);
-
-/* shifts all bits by 's' positions so that the bitset representing values 1,2,10 would represent values 1+s, 2+s, 10+s */
-void bitset_shift_left(bitset_t *bitset, size_t s);
-
-/* shifts all bits by 's' positions so that the bitset representing values 1,2,10 would represent values 1-s, 2-s, 10-s, negative values are deleted */
-void bitset_shift_right(bitset_t *bitset, size_t s);
 
 /* Set the ith bit. Attempts to resize the bitset if needed (may silently fail) */
-static inline void bitset_set(bitset_t *bitset,  size_t i ) {
+static inline bool bitset_set(bitset_t *bitset,  size_t i ) {
   size_t shiftedi = i >> 6;
-  if (shiftedi >= bitset->arraysize) {
-    if( ! bitset_grow(bitset,  shiftedi + 1) ) {
-        return;
-    }
+  if (shiftedi >= bitset->_ARRAYSIZE) {
+      return false;
   }
   bitset->array[shiftedi] |= ((uint64_t)1) << (i % 64);
+  return true;
 }
 
 /* Get the value of the ith bit.  */
 static inline bool bitset_get(const bitset_t *bitset,  size_t i ) {
   size_t shiftedi = i >> 6;
-  if (shiftedi >= bitset->arraysize) {
+  if (shiftedi >= bitset->_ARRAYSIZE) {
     return false;
   }
   return ( bitset->array[shiftedi] & ( ((uint64_t)1) << (i % 64))) != 0 ;
@@ -145,7 +118,7 @@ size_t  bitset_symmetric_difference_count(const bitset_t *restrict b1, const bit
   */
 static inline bool nextSetBit(const bitset_t *bitset, size_t *i) {
       size_t x = *i >> 6;
-      if (x >= bitset->arraysize) {
+      if (x >= bitset->_ARRAYSIZE) {
         return false;
       }
       uint64_t w = bitset->array[x];
@@ -155,7 +128,7 @@ static inline bool nextSetBit(const bitset_t *bitset, size_t *i) {
         return true;
       }
       x ++;
-      while (x < bitset->arraysize) {
+      while (x < bitset->_ARRAYSIZE) {
         w = bitset->array[x];
         if (w != 0) {
           *i = x * 64 + __builtin_ctzll(w);
@@ -177,7 +150,7 @@ static inline bool nextSetBit(const bitset_t *bitset, size_t *i) {
 static inline size_t nextSetBits(const bitset_t *bitset, size_t *buffer, size_t capacity, size_t * startfrom) {
       if(capacity == 0) return 0;// sanity check
       size_t x = *startfrom >> 6;
-      if (x >= bitset->arraysize) {
+      if (x >= bitset->_ARRAYSIZE) {
           return 0;// nothing more to iterate over
       }
       uint64_t w = bitset->array[x];
@@ -193,7 +166,7 @@ static inline size_t nextSetBits(const bitset_t *bitset, size_t *buffer, size_t 
               w ^= t;
             }
             x += 1;
-            if(x == bitset->arraysize) {
+            if(x == bitset->_ARRAYSIZE) {
               break;
             }
             base += 64;
@@ -211,7 +184,7 @@ typedef bool (*bitset_iterator)(size_t value, void *param);
 // return true if uninterrupted
 static inline bool bitset_for_each(const bitset_t *b, bitset_iterator iterator, void *ptr) {
   size_t base = 0;
-  for (size_t i = 0; i < b->arraysize; ++i ) {
+  for (size_t i = 0; i < b->_ARRAYSIZE; ++i ) {
     uint64_t w = b->array[i];
     while (w != 0) {
       uint64_t t = w & (~w + 1);

@@ -1,6 +1,6 @@
 PROJECT = ebitset
-PROJECT_DESCRIPTION = New project
-PROJECT_VERSION = 0.1.0
+PROJECT_DESCRIPTION = fixed-size bitset for tile
+PROJECT_VERSION = 0.2.0
 
 EUNIT_OPTS = verbose
 TEST_DEPS = proper
