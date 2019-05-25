@@ -1,5 +1,5 @@
-#ifndef BITSET_H
-#define BITSET_H
+#pragma once 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -59,16 +59,30 @@ static inline int32_t bitset_size_in_words(const bitset_t *bitset) {
   return BITILE_ARRAYSIZE;
 }
 
+static inline void bitset_set_list(bitset_t *bitset, const uint32_t *list, uint32_t length) {
+    uint64_t offset, load, newload, pos, index;
+    const uint32_t *end = list + length;
+    while (list != end) {
+        pos = *(const uint32_t *)list;
+        offset = pos >> 6;
+        index = pos % 64;
+        load = bitset->array[offset];
+        newload = load | (UINT64_C(1) << index);
+        bitset->array[offset] = newload;
+        bitset->cardinality += (load ^ newload) >> index;
+        list++;
+    }
+}
 
 /* Set the ith bit. Attempts to resize the bitset if needed (may silently fail) */
-static inline bool bitset_set(bitset_t *bitset,  uint32_t i ) {
-  uint32_t shiftedi = i >> 6;
+static inline bool bitset_set(bitset_t *bitset,  uint32_t pos ) {
+  uint32_t shiftedi = pos >> 6;
   if (shiftedi >= BITILE_ARRAYSIZE) {
       return false;
   }
   uint64_t old_w = bitset->array[shiftedi];
-  uint64_t new_w = old_w | (UINT64_C(1) << (i & 63));
-  bitset->cardinality += (old_w ^ new_w) >> (i & 63);
+  uint64_t new_w = old_w | (UINT64_C(1) << (pos & 63));
+  bitset->cardinality += (old_w ^ new_w) >> (pos & 63);
   bitset->array[shiftedi] = new_w;
   return true;
 }
@@ -80,6 +94,10 @@ static inline bool bitset_get(const bitset_t *bitset,  size_t i ) {
     return false;
   }
   return ( bitset->array[shiftedi] & ( ((uint64_t)1) << (i % 64))) != 0 ;
+}
+
+static inline int32_t bitset_precount(const bitset_t *bitset) {
+    return bitset->cardinality;
 }
 
 /* Count number of bit sets.  */
@@ -214,6 +232,3 @@ static inline void bitset_print(const bitset_t *b) {
   printf("}");
 }
 
-
-
-#endif

@@ -31,6 +31,25 @@ static ERL_NIF_TERM new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     return ret;
 }
 
+static ERL_NIF_TERM new_from_rawbinary(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
+    res->b = bitset_create();
+
+    ErlNifBinary bin;
+    if (argc != 1 ||
+            !enif_inspect_binary(env, argv[0], &bin)) {
+        WARN("WTF: %d", ERL_NIF_TERM_TYPE_BITSTRING == enif_term_type(env,argv[0]));
+        return enif_make_badarg(env);
+    }
+
+    bitset_set_list(res->b, (uint32_t*)bin.data, bin.size/(sizeof(uint32_t)));
+
+    ERL_NIF_TERM ret = enif_make_resource(env, res);
+    enif_release_resource(res);
+    return ret;
+}
+
 static ERL_NIF_TERM copy(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     cbs_context_t *src = NULL;
@@ -126,7 +145,7 @@ static ERL_NIF_TERM count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     if (argc != 1 || !enif_get_resource(env, argv[0], res_type, (void**)&res))
         return enif_make_badarg(env);
-    const int32_t cnt = bitset_count(res->b);
+    const int32_t cnt = bitset_precount(res->b);
     return enif_make_int(env, cnt);
 }
 
@@ -137,6 +156,19 @@ static ERL_NIF_TERM minimum(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     const int32_t minimum = bitset_minimum(res->b);
     return enif_make_int(env, minimum);
+}
+
+static ERL_NIF_TERM set_by_rawbinary(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    cbs_context_t *res = NULL;
+    ErlNifBinary bin;
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    if (argc != 2 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&res) ||
+            !enif_inspect_binary(env, argv[1], &bin))
+        return enif_make_badarg(env);
+
+    bitset_set_list(res->b, (uint32_t*)bin.data, bin.size/(sizeof(uint32_t)));
+    return argv[0];
 }
 
 static ERL_NIF_TERM set(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -196,12 +228,14 @@ static int nifload(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info) {
 
 static ErlNifFunc nif_funcs[] = {
     {"new",   0, new},
+    {"from_binary",   1, new_from_rawbinary},
     {"copy",  1, copy},
     {"union", 2, set_union},
     {"union_count", 2, union_count},
     {"intersection", 2, intersection},
     {"intersects", 2, intersects},
     {"difference", 2, difference},
+    {"set_by_rawbinary", 2, set_by_rawbinary},
     {"set",   2, set},
     {"get",   2, get},
     {"count",  1, count},

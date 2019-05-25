@@ -1,5 +1,6 @@
 -module(ebitset).
 -export([new/0]).
+-export([new/1]).
 -export([copy/1]).
 -export([union/2]).
 -export([union_count/2]).
@@ -9,6 +10,8 @@
 -export([count/1]).
 -export([minimum/1]).
 -export([maximum/1]).
+-export([set_by_list/2]).
+-export([set_by_rawbinary/2]).
 -export([set/2]).
 -export([get/2]).
 
@@ -27,6 +30,16 @@ init() ->
 
 -spec new() -> reference().
 new() ->
+    erlang:nif_error({nif_not_loaded, ?MODULE}).
+
+-spec new([non_neg_integer()] | binary()) -> reference().
+new(L) when is_list(L)->
+    RawBin = << <<X:32/native-integer>> || X <- L >>,
+    from_binary(RawBin);
+new(L) when is_binary(L)->
+    from_binary(L).
+
+from_binary(_Bin) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
 -spec copy(reference()) -> reference().
@@ -51,6 +64,15 @@ intersects(_Bitset1, _Bitset2) ->
 
 -spec difference(reference(), reference()) -> reference().
 difference(_Bitset1, _Bitset2) ->
+    erlang:nif_error({nif_not_loaded, ?MODULE}).
+
+-spec set_by_list(reference(), [non_neg_integer()]) -> reference().
+set_by_list(Bitset, L) ->
+    RawBin = << <<X:32/native-integer>> || X <- L >>,
+    set_by_rawbinary(Bitset, RawBin).
+
+-spec set_by_rawbinary(reference(), non_neg_integer()) -> reference().
+set_by_rawbinary(_Bitset, _L) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
 -spec set(reference(), non_neg_integer()) -> reference().

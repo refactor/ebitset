@@ -57,36 +57,36 @@ difference(L1, L2) ->
     lists:subtract(L, L2).
 
 prop_set_by_list() ->
-    ?FORALL(L, list(bitile_idx_range(?BITSZ)), length(lists:usort(L)) == ebitset:count(multiset(L))).
+    ?FORALL(L, list(bitile_idx_range(?BITSZ)), length(lists:usort(L)) == ebitset:count(ebitset:new(L))).
 
 prop_zero_intersection() ->
-    ?FORALL({L1, L2}, {list(even_non_neg_integer(?BITSZ)), list(odd_non_neg_integer(?BITSZ))}, 0 == ebitset:count(ebitset:intersection(multiset(L1), multiset(L2)))).
+    ?FORALL({L1, L2}, {list(even_non_neg_integer(?BITSZ)), list(odd_non_neg_integer(?BITSZ))}, 0 == ebitset:count(ebitset:intersection(multiset(L1), ebitset:new(L2)))).
 
 prop_union() ->
-    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(union(L1,L2)) == ebitset:count(ebitset:union(multiset(L1), multiset(L2)))).
+    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(union(L1,L2)) == ebitset:count(ebitset:union(ebitset:new(L1), multiset(L2)))).
 
 prop_union_count() ->
-    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, ebitset:union_count(multiset(L1),multiset(L2)) == ebitset:count(ebitset:union(multiset(L1), multiset(L2)))).
+    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, ebitset:union_count(multiset(L1),multiset(L2)) == ebitset:count(ebitset:union(multiset(L1), ebitset:new(L2)))).
 
 prop_intersection() ->
-    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(intersection(L1,L2)) == ebitset:count(ebitset:intersection(multiset(L1), multiset(L2)))).
+    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(intersection(L1,L2)) == ebitset:count(ebitset:intersection(ebitset:new(L1), multiset(L2)))).
 
 prop_intersects() ->
-    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, (length(intersection(L1,L2)) > 0) == ebitset:intersects(multiset(L1), multiset(L2))).
+    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, (length(intersection(L1,L2)) > 0) == ebitset:intersects(multiset(L1), ebitset:new(L2))).
 
 prop_difference() ->
-    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(difference(L1,L2)) == ebitset:count(ebitset:difference(multiset(L1), multiset(L2)))).
+    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(difference(L1,L2)) == ebitset:count(ebitset:difference(multiset(L1), ebitset:new(L2)))).
 
 prop_minimum() ->
-    ?FORALL(L, list(bitile_idx_range(?BITSZ)), min(L) == ebitset:minimum(ebitset:intersection(allset(?BITSZ), multiset(L)))).
+    ?FORALL(L, list(bitile_idx_range(?BITSZ)), min(L) == ebitset:minimum(ebitset:intersection(allset(?BITSZ), ebitset:new(L)))).
 prop_maximum() ->
-    ?FORALL(L, list(bitile_idx_range(?BITSZ)), max(L) == ebitset:maximum(ebitset:intersection(allset(?BITSZ), multiset(L)))).
+    ?FORALL(L, list(bitile_idx_range(?BITSZ)), max(L) == ebitset:maximum(ebitset:intersection(allset(?BITSZ), ebitset:new(L)))).
 
 prop_all_union() ->
     prop_all_union(?BITSZ).
 
 prop_all_union(SZ) ->
-    ?FORALL(L, list(bitile_idx_range(SZ)), SZ == ebitset:count(ebitset:union(allset(SZ), multiset(L)))).
+    ?FORALL(L, list(bitile_idx_range(SZ)), SZ == ebitset:count(ebitset:union(allset(SZ), ebitset:new(L)))).
 
 even_non_neg_integer(SZ) ->
     ?SUCHTHAT(X, bitile_idx_range(SZ), X rem 2 =:= 0).
