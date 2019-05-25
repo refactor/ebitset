@@ -10,20 +10,28 @@ static ERL_NIF_TERM ATOM_TRUE;
 static ERL_NIF_TERM ATOM_FALSE;
 
 typedef struct cbs_context_s {
+    ErlNifRWLock* rwlock;
     bitset_t * b;
 } cbs_context_t;
 
 void cbs_dtor(ErlNifEnv *env, void *obj) {
     cbs_context_t *ctx = (cbs_context_t*)obj;
     if (ctx) {
-        bitset_free(ctx->b);
-        ctx->b = NULL;
+        if (ctx->b) {
+            bitset_free(ctx->b);
+            ctx->b = NULL;
+        }
+        if (ctx->rwlock) {
+            enif_rwlock_destroy(ctx->rwlock);
+            ctx->rwlock = NULL;
+        }
     }
 }
 
 static ERL_NIF_TERM new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
+    res->rwlock = enif_rwlock_create("bitset-rwlock");
     res->b = bitset_create();
 
     ERL_NIF_TERM ret = enif_make_resource(env, res);
@@ -34,13 +42,17 @@ static ERL_NIF_TERM new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
 static ERL_NIF_TERM new_from_rawbinary(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
+    res->rwlock = enif_rwlock_create("bitset-rwlock");
     res->b = bitset_create();
 
     ErlNifBinary bin;
     if (argc != 1 ||
             !enif_inspect_binary(env, argv[0], &bin)) {
-        WARN("WTF: %d", ERL_NIF_TERM_TYPE_BITSTRING == enif_term_type(env,argv[0]));
         return enif_make_badarg(env);
+    }
+    const int32_t num = bin.size / sizeof(uint32_t);
+    if (num > TILE_SIZE * TILE_SIZE) {
+        return enif_raise_exception(env, enif_make_string(env, "overflow tile", ERL_NIF_LATIN1));
     }
 
     bitset_set_list(res->b, (uint32_t*)bin.data, bin.size/(sizeof(uint32_t)));
@@ -56,8 +68,14 @@ static ERL_NIF_TERM copy(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     if (argc != 1 ||
             !enif_get_resource(env, argv[0], res_type, (void**)&src))
         return enif_make_badarg(env);
+    
+    enif_rwlock_rlock(src->rwlock);
+    bitset_t* newbitset = bitset_copy(src->b);
+    enif_rwlock_runlock(src->rwlock);
+
     cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
-    res->b = bitset_copy(src->b);
+    res->b = newbitset;
+    res->rwlock = enif_rwlock_create("bitset-rwlock");
 
     ERL_NIF_TERM ret = enif_make_resource(env, res);
     enif_release_resource(res);
@@ -72,10 +90,18 @@ static ERL_NIF_TERM set_union(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
             !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
             !enif_get_resource(env, argv[1], res_type, (void**)&s2))
         return enif_make_badarg(env);
-    cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
-    res->b = bitset_copy(s1->b);
-    bitset_inplace_union(res->b, s2->b);
 
+    enif_rwlock_rlock(s1->rwlock);
+    bitset_t *newbitset = bitset_copy(s1->b);
+    enif_rwlock_runlock(s1->rwlock);
+
+    enif_rwlock_rlock(s2->rwlock);
+    bitset_inplace_union(newbitset, s2->b);
+    enif_rwlock_runlock(s2->rwlock);
+
+    cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
+    res->b = newbitset;
+    res->rwlock = enif_rwlock_create("bitset-rwlock");
     ERL_NIF_TERM ret = enif_make_resource(env, res);
     enif_release_resource(res);
     return ret;
@@ -89,7 +115,13 @@ static ERL_NIF_TERM union_count(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
             !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
             !enif_get_resource(env, argv[1], res_type, (void**)&s2))
         return enif_make_badarg(env);
-    return enif_make_uint64(env, bitset_union_count(s1->b, s2->b));
+
+    enif_rwlock_rlock(s1->rwlock);
+    enif_rwlock_rlock(s2->rwlock);
+    uint32_t uc = bitset_union_count(s1->b, s2->b);
+    enif_rwlock_runlock(s1->rwlock);
+    enif_rwlock_runlock(s2->rwlock);
+    return enif_make_uint(env, uc);
 }
 
 static ERL_NIF_TERM intersection(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -100,10 +132,18 @@ static ERL_NIF_TERM intersection(ErlNifEnv* env, int argc, const ERL_NIF_TERM ar
             !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
             !enif_get_resource(env, argv[1], res_type, (void**)&s2))
         return enif_make_badarg(env);
-    cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
-    res->b = bitset_copy(s1->b);
-    bitset_inplace_intersection(res->b, s2->b);
 
+    enif_rwlock_rlock(s1->rwlock);
+    bitset_t* newbitset = bitset_copy(s1->b);
+    enif_rwlock_runlock(s1->rwlock);
+
+    enif_rwlock_rlock(s2->rwlock);
+    bitset_inplace_intersection(newbitset, s2->b);
+    enif_rwlock_runlock(s2->rwlock);
+
+    cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
+    res->rwlock = enif_rwlock_create("bitset-rwlock");
+    res->b = newbitset;
     ERL_NIF_TERM ret = enif_make_resource(env, res);
     enif_release_resource(res);
     return ret;
@@ -117,7 +157,14 @@ static ERL_NIF_TERM intersects(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
             !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
             !enif_get_resource(env, argv[1], res_type, (void**)&s2))
         return enif_make_badarg(env);
-    if (bitset_intersects(s1->b, s2->b)) {
+
+    enif_rwlock_rlock(s1->rwlock);
+    enif_rwlock_rlock(s2->rwlock);
+    bool ret = bitset_intersects(s1->b, s2->b);
+    enif_rwlock_runlock(s1->rwlock);
+    enif_rwlock_runlock(s2->rwlock);
+
+    if (ret) {
         return ATOM_TRUE;
     }
     return ATOM_FALSE;
@@ -131,10 +178,18 @@ static ERL_NIF_TERM difference(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
             !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
             !enif_get_resource(env, argv[1], res_type, (void**)&s2))
         return enif_make_badarg(env);
-    cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
-    res->b = bitset_copy(s1->b);
-    bitset_inplace_difference(res->b, s2->b);
 
+    enif_rwlock_rlock(s1->rwlock);
+    bitset_t* newbitset = bitset_copy(s1->b);
+    enif_rwlock_runlock(s1->rwlock);
+
+    enif_rwlock_rlock(s2->rwlock);
+    bitset_inplace_difference(newbitset, s2->b);
+    enif_rwlock_runlock(s2->rwlock);
+
+    cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
+    res->rwlock = enif_rwlock_create("bitset-rwlock");
+    res->b = newbitset;
     ERL_NIF_TERM ret = enif_make_resource(env, res);
     enif_release_resource(res);
     return ret;
@@ -145,7 +200,11 @@ static ERL_NIF_TERM count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     if (argc != 1 || !enif_get_resource(env, argv[0], res_type, (void**)&res))
         return enif_make_badarg(env);
+
+    enif_rwlock_rlock(res->rwlock);
     const int32_t cnt = bitset_precount(res->b);
+    enif_rwlock_runlock(res->rwlock);
+
     return enif_make_int(env, cnt);
 }
 
@@ -154,7 +213,11 @@ static ERL_NIF_TERM minimum(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     if (argc != 1 || !enif_get_resource(env, argv[0], res_type, (void**)&res))
         return enif_make_badarg(env);
+
+    enif_rwlock_rlock(res->rwlock);
     const int32_t minimum = bitset_minimum(res->b);
+    enif_rwlock_runlock(res->rwlock);
+
     return enif_make_int(env, minimum);
 }
 
@@ -167,7 +230,15 @@ static ERL_NIF_TERM set_by_rawbinary(ErlNifEnv* env, int argc, const ERL_NIF_TER
             !enif_inspect_binary(env, argv[1], &bin))
         return enif_make_badarg(env);
 
+    const int32_t num = bin.size / sizeof(uint32_t);
+    if (num > TILE_SIZE * TILE_SIZE) {
+        return enif_raise_exception(env, enif_make_string(env, "overflow tile", ERL_NIF_LATIN1));
+    }
+
+    enif_rwlock_rwlock(res->rwlock);
     bitset_set_list(res->b, (uint32_t*)bin.data, bin.size/(sizeof(uint32_t)));
+    enif_rwlock_rwunlock(res->rwlock);
+
     return argv[0];
 }
 
@@ -179,7 +250,15 @@ static ERL_NIF_TERM set(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
             !enif_get_resource(env, argv[0], res_type, (void**)&res) ||
             !enif_get_uint(env, argv[1], &i))
         return enif_make_badarg(env);
+
+    if (i > TILE_SIZE * TILE_SIZE) {
+        return enif_raise_exception(env, enif_make_string(env, "overflow tile", ERL_NIF_LATIN1));
+    }
+
+    enif_rwlock_rwlock(res->rwlock);
     bitset_set(res->b, i);
+    enif_rwlock_rwunlock(res->rwlock);
+
     return argv[0];
 }
 
@@ -200,7 +279,12 @@ static ERL_NIF_TERM get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
             !enif_get_resource(env, argv[0], res_type, (void**)&res) ||
             !enif_get_uint64(env, argv[1], &i))
         return enif_make_badarg(env);
-    if (bitset_get(res->b, i)) 
+
+    enif_rwlock_rlock(res->rwlock);
+    bool ret = bitset_get(res->b, i);
+    enif_rwlock_runlock(res->rwlock);
+
+    if (ret) 
         return ATOM_TRUE;
     return ATOM_FALSE;
 }
