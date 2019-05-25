@@ -98,7 +98,7 @@ static ERL_NIF_TERM intersects(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
             !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
             !enif_get_resource(env, argv[1], res_type, (void**)&s2))
         return enif_make_badarg(env);
-    if (bitset_intersection_count(s1->b, s2->b) > 0) {
+    if (bitset_intersects(s1->b, s2->b)) {
         return ATOM_TRUE;
     }
     return ATOM_FALSE;
@@ -126,8 +126,8 @@ static ERL_NIF_TERM count(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     if (argc != 1 || !enif_get_resource(env, argv[0], res_type, (void**)&res))
         return enif_make_badarg(env);
-    const size_t cnt = bitset_count(res->b);
-    return enif_make_uint64(env, cnt);
+    const int32_t cnt = bitset_count(res->b);
+    return enif_make_int(env, cnt);
 }
 
 static ERL_NIF_TERM minimum(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -135,17 +135,17 @@ static ERL_NIF_TERM minimum(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     if (argc != 1 || !enif_get_resource(env, argv[0], res_type, (void**)&res))
         return enif_make_badarg(env);
-    const size_t minimum = bitset_minimum(res->b);
-    return enif_make_uint64(env, minimum);
+    const int32_t minimum = bitset_minimum(res->b);
+    return enif_make_int(env, minimum);
 }
 
 static ERL_NIF_TERM set(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     cbs_context_t *res = NULL;
-    ErlNifUInt64 i = 0;
+    uint32_t i = 0;
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     if (argc != 2 ||
             !enif_get_resource(env, argv[0], res_type, (void**)&res) ||
-            !enif_get_uint64(env, argv[1], &i))
+            !enif_get_uint(env, argv[1], &i))
         return enif_make_badarg(env);
     bitset_set(res->b, i);
     return argv[0];
@@ -156,8 +156,8 @@ static ERL_NIF_TERM maximum(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     if (argc != 1 || !enif_get_resource(env, argv[0], res_type, (void**)&res))
         return enif_make_badarg(env);
-    const size_t maximum = bitset_maximum(res->b);
-    return enif_make_uint64(env, maximum);
+    const int maximum = bitset_maximum(res->b);
+    return enif_make_int(env, maximum);
 }
 
 static ERL_NIF_TERM get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -174,7 +174,7 @@ static ERL_NIF_TERM get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
 }
 
 static ERL_NIF_TERM tilesize(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
-    return enif_make_uint(env, BITILE_SIZE);
+    return enif_make_uint(env, TILE_SIZE);
 }
 
 static int nifload(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info) {

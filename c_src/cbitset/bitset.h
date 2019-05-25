@@ -5,10 +5,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <limits.h>
 
 #include "portability.h"
 
-#define BITILE_SIZE 256
+#define TILE_SIZE 256
+#define BITILE_BITSIZE (TILE_SIZE * TILE_SIZE)
+#define BITILE_BYTESIZE (BITILE_BITSIZE / CHAR_BIT)
+#define BITILE_ARRAYSIZE (BITILE_BYTESIZE / sizeof(uint64_t))
 
 // 8KB for a 256x256 bitile
 #define BITSET_256x256_ARRSZ 1024
@@ -16,7 +20,8 @@
 #define BITSET_512x512_ARRSZ 4096
 
 struct bitset_s {
-    size_t _ARRAYSIZE;
+    int32_t cardinality;
+    int32_t _ARRAYSIZE;
     uint64_t  array[];
 };
 
@@ -26,7 +31,7 @@ typedef struct bitset_s bitset_t;
 bitset_t *bitset_create( void );
 
 /* Create a new bitset able to contain size bits. Return NULL in case of failure. */
-bitset_t *bitset_create_with_capacity( size_t size );
+bitset_t *bitset_create_with_capacity( int32_t size );
 
 /* Free memory. */
 void bitset_free(bitset_t *bitset);
@@ -41,28 +46,31 @@ bitset_t * bitset_copy(const bitset_t *bitset);
 bool bitset_resize( bitset_t *bitset,  size_t newarraysize, bool padwithzeroes );
 
 /* returns how many bytes of memory the backend buffer uses */
-static inline size_t bitset_size_in_bytes(const bitset_t *bitset) {
-  return bitset->_ARRAYSIZE*sizeof(uint64_t);
+static inline int32_t bitset_size_in_bytes(const bitset_t *bitset) {
+  return BITILE_BYTESIZE;
 }
 
 /* returns how many bits can be accessed */
-static inline size_t bitset_size_in_bits(const bitset_t *bitset) {
-  return bitset->_ARRAYSIZE * 64;
+static inline int32_t bitset_size_in_bits(const bitset_t *bitset) {
+  return BITILE_BITSIZE;
 }
 
 /* returns how many words (64-bit) of memory the backend buffer uses */
-static inline size_t bitset_size_in_words(const bitset_t *bitset) {
-  return bitset->_ARRAYSIZE;
+static inline int32_t bitset_size_in_words(const bitset_t *bitset) {
+  return BITILE_ARRAYSIZE;
 }
 
 
 /* Set the ith bit. Attempts to resize the bitset if needed (may silently fail) */
-static inline bool bitset_set(bitset_t *bitset,  size_t i ) {
-  size_t shiftedi = i >> 6;
+static inline bool bitset_set(bitset_t *bitset,  uint32_t i ) {
+  uint32_t shiftedi = i >> 6;
   if (shiftedi >= bitset->_ARRAYSIZE) {
       return false;
   }
-  bitset->array[shiftedi] |= ((uint64_t)1) << (i % 64);
+  uint64_t old_w = bitset->array[shiftedi];
+  uint64_t new_w = old_w | (UINT64_C(1) << (i & 63));
+  bitset->cardinality += (old_w ^ new_w) >> (i & 63);
+  bitset->array[shiftedi] = new_w;
   return true;
 }
 
@@ -76,39 +84,41 @@ static inline bool bitset_get(const bitset_t *bitset,  size_t i ) {
 }
 
 /* Count number of bit sets.  */
-size_t bitset_count(const bitset_t *bitset);
+int32_t bitset_count(const bitset_t *bitset);
 
 /* Find the index of the first bit set.  */
-size_t bitset_minimum(const bitset_t *bitset);
+int32_t bitset_minimum(const bitset_t *bitset);
 
 /* Find the index of the last bit set.  */
-size_t bitset_maximum(const bitset_t *bitset);
+int32_t bitset_maximum(const bitset_t *bitset);
 
 
 /* compute the union in-place (to b1), returns true if successful, to generate a new bitset first call bitset_copy */
 bool bitset_inplace_union(bitset_t * restrict b1, const bitset_t * restrict b2);
 
 /* report the size of the union (without materializing it) */
-size_t bitset_union_count(const bitset_t * restrict b1, const bitset_t * restrict b2);
+int32_t bitset_union_count(const bitset_t * restrict b1, const bitset_t * restrict b2);
+
+bool bitset_intersects(const bitset_t *restrict b1, const bitset_t * restrict b2);
 
 /* compute the intersection in-place (to b1), to generate a new bitset first call bitset_copy */
 void bitset_inplace_intersection(bitset_t * restrict b1, const bitset_t * restrict b2);
 
 /* report the size of the intersection (without materializing it) */
-size_t bitset_intersection_count(const bitset_t * restrict b1, const bitset_t * restrict b2);
+int32_t bitset_intersection_count(const bitset_t * restrict b1, const bitset_t * restrict b2);
 
 
 /* compute the difference in-place (to b1), to generate a new bitset first call bitset_copy */
 void bitset_inplace_difference(bitset_t * restrict b1, const bitset_t * restrict b2);
 
 /* compute the size of the difference */
-size_t  bitset_difference_count(const bitset_t *restrict b1, const bitset_t * restrict b2) ;
+int32_t  bitset_difference_count(const bitset_t *restrict b1, const bitset_t * restrict b2) ;
 
 /* compute the symmetric difference in-place (to b1), return true if successful, to generate a new bitset first call bitset_copy */
 bool bitset_inplace_symmetric_difference(bitset_t * restrict b1, const bitset_t * restrict b2);
 
 /* compute the size of the symmetric difference  */
-size_t  bitset_symmetric_difference_count(const bitset_t *restrict b1, const bitset_t * restrict b2);
+int32_t  bitset_symmetric_difference_count(const bitset_t *restrict b1, const bitset_t * restrict b2);
 
 /* iterate over the set bits
  like so :

@@ -8,7 +8,10 @@ init_test_() ->
     [test_zero(), test_empty_two(), test_two()].
 
 test_zero() ->
-    ?_assertEqual(0, ebitset:count(ebitset:new())).
+    S = ebitset:new(),
+    [?_assertEqual(0, ebitset:count(S)),
+     ?_assertEqual(0, ebitset:minimum(S)),
+     ?_assertEqual(0, ebitset:maximum(S))].
 
 test_empty_two() ->
     S1 = ebitset:new(),
