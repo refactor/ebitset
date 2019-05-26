@@ -60,16 +60,19 @@ static inline int32_t bitset_size_in_words(const bitset_t *bitset) {
 }
 
 static inline void bitset_set_list(bitset_t *bitset, const uint32_t *list, uint32_t length) {
-    uint64_t offset, load, newload, pos, index;
+    uint32_t offset, pos, index;
+    uint64_t load, newload;
     const uint32_t *end = list + length;
     while (list != end) {
         pos = *(const uint32_t *)list;
         offset = pos >> 6;
         index = pos % 64;
-        load = bitset->array[offset];
-        newload = load | (UINT64_C(1) << index);
-        bitset->array[offset] = newload;
-        bitset->cardinality += (load ^ newload) >> index;
+        if (offset < BITILE_ARRAYSIZE) {
+            load = bitset->array[offset];
+            newload = load | (UINT64_C(1) << index);
+            bitset->array[offset] = newload;
+            bitset->cardinality += (load ^ newload) >> index;
+        }
         list++;
     }
 }
