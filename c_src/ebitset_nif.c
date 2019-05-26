@@ -262,6 +262,26 @@ static ERL_NIF_TERM set(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     return argv[0];
 }
 
+static ERL_NIF_TERM unset(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+    cbs_context_t *res = NULL;
+    uint32_t i = 0;
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    if (argc != 2 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&res) ||
+            !enif_get_uint(env, argv[1], &i))
+        return enif_make_badarg(env);
+
+    if (i > TILE_SIZE * TILE_SIZE) {
+        return enif_raise_exception(env, enif_make_string(env, "overflow tile", ERL_NIF_LATIN1));
+    }
+
+    enif_rwlock_rwlock(res->rwlock);
+    bitset_unset(res->b, i);
+    enif_rwlock_rwunlock(res->rwlock);
+
+    return argv[0];
+}
+
 static ERL_NIF_TERM maximum(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     cbs_context_t *res = NULL;
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
@@ -321,6 +341,7 @@ static ErlNifFunc nif_funcs[] = {
     {"difference", 2, difference},
     {"set_by_rawbinary", 2, set_by_rawbinary},
     {"set",   2, set},
+    {"unset",   2, unset},
     {"get",   2, get},
     {"count",  1, count},
     {"minimum",  1, minimum},

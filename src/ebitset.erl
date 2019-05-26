@@ -13,6 +13,7 @@
 -export([set_by_list/2]).
 -export([set_by_rawbinary/2]).
 -export([set/2]).
+-export([unset/2]).
 -export([get/2]).
 
 -export([tilesize/0]).
@@ -77,6 +78,10 @@ set_by_rawbinary(_Bitset, _L) ->
 
 -spec set(reference(), non_neg_integer()) -> reference().
 set(_Bitset, _Idx) ->
+    erlang:nif_error({nif_not_loaded, ?MODULE}).
+
+-spec unset(reference(), non_neg_integer()) -> reference().
+unset(_Bitset, _Idx) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
 -spec get(reference(), non_neg_integer()) -> boolean().

@@ -90,6 +90,19 @@ static inline bool bitset_set(bitset_t *bitset,  uint32_t pos ) {
   return true;
 }
 
+static inline bool bitset_unset(bitset_t *bitset, uint32_t pos) {
+    const uint32_t shiftedi = pos >> 6;
+    if (shiftedi >= BITILE_ARRAYSIZE) {
+      return false;
+    }
+    uint64_t old_word = bitset->array[shiftedi];
+    const int index = pos & 63;
+    const uint64_t new_word = old_word & (~(UINT64_C(1) << index));
+    bitset->cardinality -= (uint32_t)((old_word ^ new_word) >> index);
+    bitset->array[shiftedi] = new_word;
+    return true;
+}
+
 /* Get the value of the ith bit.  */
 static inline bool bitset_get(const bitset_t *bitset,  size_t i ) {
   size_t shiftedi = i >> 6;

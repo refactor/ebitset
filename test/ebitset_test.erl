@@ -41,6 +41,11 @@ multiset([H|L], S) ->
 multiset(L) ->
     multiset(L, ebitset:new()).
 
+multiunset([], S) ->
+    S;
+multiunset([H|L], S) ->
+    multiunset(L, ebitset:unset(S, H)).
+
 allset(SZ) ->
     multiset(lists:seq(0, SZ-1)).
 
@@ -61,6 +66,9 @@ prop_set_by_list() ->
 
 prop_zero_intersection() ->
     ?FORALL({L1, L2}, {list(even_non_neg_integer(?BITSZ)), list(odd_non_neg_integer(?BITSZ))}, 0 == ebitset:count(ebitset:intersection(multiset(L1), ebitset:new(L2)))).
+
+prop_zero_unset() ->
+    ?FORALL(L, list(bitile_idx_range(?BITSZ)), 0 == ebitset:count(multiunset(L, ebitset:new(L)))).
 
 prop_union() ->
     ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(union(L1,L2)) == ebitset:count(ebitset:union(ebitset:new(L1), multiset(L2)))).
