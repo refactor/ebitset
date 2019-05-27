@@ -42,6 +42,9 @@ void bitset_free(bitset_t *bitset) {
     free(bitset);
 }
 
+/*
+ * just for test, use precount(...) in production enviroment
+ */
 int32_t bitset_count(const bitset_t *bitset) {
     int32_t card = 0;
     int32_t k = 0;
