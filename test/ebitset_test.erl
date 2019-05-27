@@ -33,26 +33,6 @@ test_two() ->
     ebitset:set(S2, 4),
     ?_assertEqual(5, ebitset:count(ebitset:union(S1,S2))).
 
-op_test_() ->
-    [test_difference(), test_difference1(), test_difference2()].
-
-test_difference() ->
-    S1 = ebitset:new(),
-    S2 = ebitset:new(),
-    ?_assertEqual(0, ebitset:difference_count(S1, S2)).
-
-test_difference1() ->
-    S1 = ebitset:new(),
-    S2 = ebitset:new(),
-    ebitset:set(S2, 3),
-    ?_assertEqual(0, ebitset:difference_count(S1, S2)).
-
-test_difference2() ->
-    S1 = ebitset:new(),
-    S2 = ebitset:new(),
-    ebitset:set(S1, 3),
-    ?_assertEqual(1, ebitset:difference_count(S1, S2)).
-
 multiset([], S) ->
     S;
 multiset([H|L], S) ->

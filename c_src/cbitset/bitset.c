@@ -13,33 +13,33 @@ bitset_t *bitset_create() {
 
 /* Create a new bitset able to contain size bits. Return NULL in case of failure. */
 bitset_t *bitset_create_with_capacity( int32_t size ) {
-  bitset_t *bitset = NULL;
-  /* Allocate the bitset itself. */
-  if( ( bitset = (bitset_t*) calloc(1, sizeof(bitset_t) + BITILE_BYTESIZE ) ) == NULL ) {
-      return NULL;
-  }
-  return bitset;
+    bitset_t *bitset = NULL;
+    /* Allocate the bitset itself. */
+    if( ( bitset = (bitset_t*) calloc(1, sizeof(bitset_t) + BITILE_BYTESIZE ) ) == NULL ) {
+        return NULL;
+    }
+    return bitset;
 }
 
 /* Create a copy */
 bitset_t *bitset_copy( const bitset_t * bitset ) {
-  bitset_t *copy = NULL;
-  /* Allocate the bitset itself. */
-  if( ( copy = (bitset_t*) malloc( sizeof(bitset_t) + BITILE_BYTESIZE) ) == NULL ) {
-      return NULL;
-  }
-  memcpy(copy,bitset,sizeof(bitset_t) + BITILE_BYTESIZE);
-  return copy;
-}
+    bitset_t *copy = NULL;
+    /* Allocate the bitset itself. */
+    if( ( copy = (bitset_t*) malloc( sizeof(bitset_t) + BITILE_BYTESIZE) ) == NULL ) {
+        return NULL;
+    }
+    memcpy(copy, bitset, sizeof(bitset_t) + BITILE_BYTESIZE);
+        return copy;
+    }
 
 void bitset_clear(bitset_t *bitset) {
-  memset(bitset->array,0, BITILE_BYTESIZE);
-  bitset->cardinality = 0;
+    memset(bitset->array,0, BITILE_BYTESIZE);
+    bitset->cardinality = 0;
 }
 
 /* Free memory. */
 void bitset_free(bitset_t *bitset) {
-  free(bitset);
+    free(bitset);
 }
 
 int32_t bitset_count(const bitset_t *bitset) {
@@ -73,23 +73,23 @@ int32_t bitset_count(const bitset_t *bitset) {
 }
 
 int32_t bitset_minimum(const bitset_t *bitset) {
-  for(int32_t k = 0; k < BITILE_ARRAYSIZE; k++) {
-    uint64_t w = bitset->array[k];
-    if ( w != 0 ) {
-      return __builtin_ctzll(w) + k * 64;
+    for(int32_t k = 0; k < BITILE_ARRAYSIZE; k++) {
+        uint64_t w = bitset->array[k];
+        if ( w != 0 ) {
+            return __builtin_ctzll(w) + k * 64;
+        }
     }
-  }
-  return 0;
+    return 0;
 }
 
 int32_t bitset_maximum(const bitset_t *bitset) {
-  for(int32_t k = BITILE_ARRAYSIZE ; k > 0 ; k--) {
-    uint64_t w = bitset->array[k - 1];
-    if ( w != 0 ) {
-      return  63 - __builtin_clzll(w) + (k - 1) * 64;
+    for(int32_t k = BITILE_ARRAYSIZE ; k > 0 ; k--) {
+        uint64_t w = bitset->array[k - 1];
+        if ( w != 0 ) {
+            return  63 - __builtin_clzll(w) + (k - 1) * 64;
+        }
     }
-  }
-  return 0;
+    return 0;
 }
 
 bool bitset_inplace_union(bitset_t * restrict b1, const bitset_t * restrict b2) {
@@ -173,9 +173,9 @@ int32_t  bitset_difference_count(const bitset_t *restrict b1, const bitset_t * r
 }
 
 void bitset_inplace_symmetric_difference(bitset_t *restrict b1, const bitset_t * restrict b2) {
-    if (b2->cardinality == 0) {
+    if (b2->cardinality == 0)
         return;
-    }
+
     int32_t card = 0;
     for( int32_t k = 0; k < BITILE_ARRAYSIZE; ++k) {
         b1->array[k] ^= b2->array[k];

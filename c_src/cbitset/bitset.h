@@ -79,15 +79,15 @@ static inline void bitset_set_list(bitset_t *bitset, const uint32_t *list, uint3
 
 /* Set the ith bit. Attempts to resize the bitset if needed (may silently fail) */
 static inline bool bitset_set(bitset_t *bitset,  uint32_t pos ) {
-  uint32_t shiftedi = pos >> 6;
-  if (shiftedi >= BITILE_ARRAYSIZE) {
-      return false;
-  }
-  uint64_t old_w = bitset->array[shiftedi];
-  uint64_t new_w = old_w | (UINT64_C(1) << (pos & 63));
-  bitset->cardinality += (old_w ^ new_w) >> (pos & 63);
-  bitset->array[shiftedi] = new_w;
-  return true;
+    uint32_t shiftedi = pos >> 6;
+    if (shiftedi >= BITILE_ARRAYSIZE) {
+        return false;
+    }
+    uint64_t old_w = bitset->array[shiftedi];
+    uint64_t new_w = old_w | (UINT64_C(1) << (pos & 63));
+    bitset->cardinality += (old_w ^ new_w) >> (pos & 63);
+    bitset->array[shiftedi] = new_w;
+    return true;
 }
 
 static inline bool bitset_unset(bitset_t *bitset, uint32_t pos) {
@@ -105,11 +105,11 @@ static inline bool bitset_unset(bitset_t *bitset, uint32_t pos) {
 
 /* Get the value of the ith bit.  */
 static inline bool bitset_get(const bitset_t *bitset,  size_t i ) {
-  size_t shiftedi = i >> 6;
-  if (shiftedi >= BITILE_ARRAYSIZE) {
-    return false;
-  }
-  return ( bitset->array[shiftedi] & ( ((uint64_t)1) << (i % 64))) != 0 ;
+    size_t shiftedi = i >> 6;
+    if (shiftedi >= BITILE_ARRAYSIZE) {
+        return false;
+    }
+    return ( bitset->array[shiftedi] & ( ((uint64_t)1) << (i % 64))) != 0 ;
 }
 
 static inline int32_t bitset_precount(const bitset_t *bitset) {
@@ -160,26 +160,26 @@ int32_t  bitset_symmetric_difference_count(const bitset_t *restrict b1, const bi
   }
   */
 static inline bool nextSetBit(const bitset_t *bitset, size_t *i) {
-      size_t x = *i >> 6;
-      if (x >= BITILE_ARRAYSIZE) {
+    size_t x = *i >> 6;
+    if (x >= BITILE_ARRAYSIZE) {
         return false;
-      }
-      uint64_t w = bitset->array[x];
-      w >>= (*i & 63);
-      if (w != 0) {
+    }
+    uint64_t w = bitset->array[x];
+    w >>= (*i & 63);
+    if (w != 0) {
         *i += __builtin_ctzll(w);
         return true;
-      }
-      x ++;
-      while (x < BITILE_ARRAYSIZE) {
+    }
+    x ++;
+    while (x < BITILE_ARRAYSIZE) {
         w = bitset->array[x];
         if (w != 0) {
-          *i = x * 64 + __builtin_ctzll(w);
-          return true;
+            *i = x * 64 + __builtin_ctzll(w);
+            return true;
         }
         x ++;
-      }
-      return false;
+    }
+    return false;
 }
 
 /* iterate over the set bits
@@ -191,60 +191,60 @@ static inline bool nextSetBit(const bitset_t *bitset, size_t *i) {
   }
   */
 static inline size_t nextSetBits(const bitset_t *bitset, size_t *buffer, size_t capacity, size_t * startfrom) {
-      if(capacity == 0) return 0;// sanity check
-      size_t x = *startfrom >> 6;
-      if (x >= BITILE_ARRAYSIZE) {
-          return 0;// nothing more to iterate over
-      }
-      uint64_t w = bitset->array[x];
-      w >>= (*startfrom & 63);
-      size_t howmany = 0;
-      size_t base = x << 6;
-      while(howmany < capacity) {
-            while (w != 0) {
-              uint64_t t = w & (~w + 1);
-              int r = __builtin_ctzll(w);
-              buffer[howmany++] = r + base;
-              if(howmany == capacity) goto end;
-              w ^= t;
-            }
-            x += 1;
-            if(x == BITILE_ARRAYSIZE) {
-              break;
-            }
-            base += 64;
-            w = bitset->array[x];
-      }
-      end:
-      if(howmany > 0) {
+    if(capacity == 0) return 0;// sanity check
+    size_t x = *startfrom >> 6;
+    if (x >= BITILE_ARRAYSIZE) {
+        return 0;// nothing more to iterate over
+    }
+    uint64_t w = bitset->array[x];
+    w >>= (*startfrom & 63);
+    size_t howmany = 0;
+    size_t base = x << 6;
+    while(howmany < capacity) {
+        while (w != 0) {
+            uint64_t t = w & (~w + 1);
+            int r = __builtin_ctzll(w);
+            buffer[howmany++] = r + base;
+            if(howmany == capacity) goto end;
+            w ^= t;
+        }
+        x += 1;
+        if(x == BITILE_ARRAYSIZE) {
+            break;
+        }
+        base += 64;
+        w = bitset->array[x];
+    }
+end:
+    if(howmany > 0) {
         *startfrom = buffer[howmany - 1];
-      }
-      return howmany;
+    }
+    return howmany;
 }
 
 typedef bool (*bitset_iterator)(size_t value, void *param);
 
 // return true if uninterrupted
 static inline bool bitset_for_each(const bitset_t *b, bitset_iterator iterator, void *ptr) {
-  size_t base = 0;
-  for (size_t i = 0; i < BITILE_ARRAYSIZE; ++i ) {
-    uint64_t w = b->array[i];
-    while (w != 0) {
-      uint64_t t = w & (~w + 1);
-      int r = __builtin_ctzll(w);
-      if(!iterator(r + base, ptr)) return false;
-      w ^= t;
+    size_t base = 0;
+    for (size_t i = 0; i < BITILE_ARRAYSIZE; ++i ) {
+        uint64_t w = b->array[i];
+        while (w != 0) {
+            uint64_t t = w & (~w + 1);
+            int r = __builtin_ctzll(w);
+            if(!iterator(r + base, ptr)) return false;
+            w ^= t;
+        }
+        base += 64;
     }
-    base += 64;
-  }
-  return true;
+    return true;
 }
 
 static inline void bitset_print(const bitset_t *b) {
-  printf("{");
-  for(size_t i = 0; nextSetBit(b,&i) ; i++) {
-    printf("%zu, ",i);
-  }
-  printf("}");
+    printf("{");
+    for(size_t i = 0; nextSetBit(b,&i) ; i++) {
+        printf("%zu, ",i);
+    }
+    printf("}");
 }
 
