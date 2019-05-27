@@ -72,17 +72,6 @@ int32_t bitset_count(const bitset_t *bitset) {
     return card;
 }
 
-
-bool bitset_inplace_union(bitset_t * restrict b1, const bitset_t * restrict b2) {
-  int32_t card = 0;
-  for(int32_t k = 0 ; k < BITILE_ARRAYSIZE; ++k) {
-    b1->array[k] |= b2->array[k];
-    card += __builtin_popcountll(b1->array[k]);
-  }
-  b1->cardinality = card;
-  return true;
-}
-
 int32_t bitset_minimum(const bitset_t *bitset) {
   for(int32_t k = 0; k < BITILE_ARRAYSIZE; k++) {
     uint64_t w = bitset->array[k];
@@ -103,80 +92,109 @@ int32_t bitset_maximum(const bitset_t *bitset) {
   return 0;
 }
 
-bool bitset_intersects(const bitset_t *restrict b1, const bitset_t * restrict b2) {
-  if (b1->cardinality + b2->cardinality > BITILE_BITSIZE)
-      return true;
-
-  for( int32_t k = 0; k < BITILE_ARRAYSIZE; ++k) {
-    if (__builtin_popcountll ( b1->array[k] & b2->array[k]) > 0)
+bool bitset_inplace_union(bitset_t * restrict b1, const bitset_t * restrict b2) {
+    if (b1->cardinality == BITILE_BITSIZE || b2->cardinality == 0)
         return true;
-  }
-  return false;
+
+    int32_t card = 0;
+    for(int32_t k = 0 ; k < BITILE_ARRAYSIZE; ++k) {
+        b1->array[k] |= b2->array[k];
+        card += __builtin_popcountll(b1->array[k]);
+    }
+    b1->cardinality = card;
+    return true;
 }
 
 int32_t bitset_union_count(const bitset_t *restrict b1, const bitset_t * restrict b2) {
-  int32_t answer = 0;
-  int32_t k = 0;
-  for( ; k + 3 < BITILE_ARRAYSIZE; k += 4) {
-    answer += __builtin_popcountll ( b1->array[k] | b2->array[k]);
-    answer += __builtin_popcountll ( b1->array[k+1] | b2->array[k+1]);
-    answer += __builtin_popcountll ( b1->array[k+2] | b2->array[k+2]);
-    answer += __builtin_popcountll ( b1->array[k+3] | b2->array[k+3]);
-  }
-  return answer;
+    if (b1->cardinality == 0 || b2->cardinality == 0) 
+        return b1->cardinality + b2->cardinality;
+    if (b1->cardinality == BITILE_BITSIZE || b2->cardinality == BITILE_BITSIZE) 
+        return BITILE_BITSIZE;
+
+    int32_t answer = 0;
+    int32_t k = 0;
+    for( ; k + 3 < BITILE_ARRAYSIZE; k += 4) {
+        answer += __builtin_popcountll ( b1->array[k] | b2->array[k]);
+        answer += __builtin_popcountll ( b1->array[k+1] | b2->array[k+1]);
+        answer += __builtin_popcountll ( b1->array[k+2] | b2->array[k+2]);
+        answer += __builtin_popcountll ( b1->array[k+3] | b2->array[k+3]);
+    }
+    return answer;
 }
 
 void bitset_inplace_intersection(bitset_t * restrict b1, const bitset_t * restrict b2) {
-  int32_t card = 0;
-  for(int32_t k = 0 ; k < BITILE_ARRAYSIZE; ++k) {
-    b1->array[k] &= b2->array[k];
-    card += __builtin_popcountll(b1->array[k]);
-  }
-  b1->cardinality = card;
+    if (b1->cardinality == 0 || b2->cardinality == BITILE_BITSIZE) 
+        return;
+
+    int32_t card = 0;
+    for(int32_t k = 0 ; k < BITILE_ARRAYSIZE; ++k) {
+        b1->array[k] &= b2->array[k];
+        card += __builtin_popcountll(b1->array[k]);
+    }
+    b1->cardinality = card;
 }
 
-int32_t bitset_intersection_count(const bitset_t * restrict b1, const bitset_t * restrict b2) {
-  int32_t answer = 0;
-  for(int32_t k = 0 ; k < BITILE_ARRAYSIZE; ++k) {
-    answer += __builtin_popcountll ( b1->array[k] & b2->array[k]);
-  }
-  return answer;
+bool bitset_intersects(const bitset_t *restrict b1, const bitset_t * restrict b2) {
+    if (b1->cardinality == 0 || b2->cardinality == 0)
+        return false;
+    if (b1->cardinality + b2->cardinality > BITILE_BITSIZE)
+        return true;
+
+    for( int32_t k = 0; k < BITILE_ARRAYSIZE; ++k) {
+    if (__builtin_popcountll ( b1->array[k] & b2->array[k]) > 0)
+        return true;
+    }
+    return false;
 }
 
 void bitset_inplace_difference(bitset_t *restrict b1, const bitset_t * restrict b2) {
-  int32_t card = 0;
-  for( int32_t k = 0; k < BITILE_ARRAYSIZE; ++k) {
-    b1->array[k] &= ~ (b2->array[k]);
-    card += __builtin_popcountll(b1->array[k]);
-  }
-  b1->cardinality = card;
-}
+    if (b1->cardinality == 0 || b2->cardinality == 0)
+        return;
 
+    int32_t card = 0;
+    for( int32_t k = 0; k < BITILE_ARRAYSIZE; ++k) {
+        b1->array[k] &= ~ (b2->array[k]);
+        card += __builtin_popcountll(b1->array[k]);
+    }
+    b1->cardinality = card;
+}
 
 int32_t  bitset_difference_count(const bitset_t *restrict b1, const bitset_t * restrict b2) {
-  int32_t answer = 0;
-  for(int32_t k = 0; k < BITILE_ARRAYSIZE; ++k) {
-    answer += __builtin_popcountll (b1->array[k] & ~ (b2->array[k]));
-  }
-  return answer;
+    if (b1->cardinality == 0 || b2->cardinality == 0)
+        return b1->cardinality;
+    if (b2->cardinality == BITILE_BITSIZE)
+        return 0;
+    
+    int32_t answer = 0;
+    for(int32_t k = 0; k < BITILE_ARRAYSIZE; ++k) {
+        answer += __builtin_popcountll (b1->array[k] & ~ (b2->array[k]));
+    }
+    return answer;
 }
 
-bool bitset_inplace_symmetric_difference(bitset_t *restrict b1, const bitset_t * restrict b2) {
-  int32_t card = 0;
-  for( int32_t k = 0; k < BITILE_ARRAYSIZE; ++k) {
-    b1->array[k] ^= b2->array[k];
-    card += __builtin_popcountll(b1->array[k]);
-  }
-  b1->cardinality = card;
-  return true;
+void bitset_inplace_symmetric_difference(bitset_t *restrict b1, const bitset_t * restrict b2) {
+    if (b2->cardinality == 0) {
+        return;
+    }
+    int32_t card = 0;
+    for( int32_t k = 0; k < BITILE_ARRAYSIZE; ++k) {
+        b1->array[k] ^= b2->array[k];
+        card += __builtin_popcountll(b1->array[k]);
+    }
+    b1->cardinality = card;
+    return;
 }
 
-int32_t  bitset_symmetric_difference_count(const bitset_t *restrict b1, const bitset_t * restrict b2) {
-  int32_t k = 0;
-  int32_t answer = 0;
-  for( ; k < BITILE_ARRAYSIZE; ++k) {
-    answer += __builtin_popcountll(b1->array[k] ^ b2->array[k]);
-  }
-  return answer;
+int32_t bitset_symmetric_difference_count(const bitset_t *restrict b1, const bitset_t * restrict b2) {
+    if ((b1->cardinality == 0 || b2->cardinality == 0)) {
+        return b1->cardinality + b2->cardinality;
+    }
+
+    int32_t k = 0;
+    int32_t answer = 0;
+    for( ; k < BITILE_ARRAYSIZE; ++k) {
+        answer += __builtin_popcountll(b1->array[k] ^ b2->array[k]);
+    }
+    return answer;
 }
 

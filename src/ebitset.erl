@@ -7,7 +7,9 @@
 -export([intersection/2]).
 -export([intersects/2]).
 -export([difference/2]).
+-export([difference_count/2]).
 -export([symmetric_difference/2]).
+-export([symmetric_difference_count/2]).
 -export([count/1]).
 -export([minimum/1]).
 -export([maximum/1]).
@@ -70,9 +72,17 @@ intersects(_Bitset1, _Bitset2) ->
 difference(_Bitset1, _Bitset2) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
+-spec difference_count(reference(), reference()) -> reference().
+difference_count(_Bitset1, _Bitset2) ->
+    erlang:nif_error({nif_not_loaded, ?MODULE}).
+
 %% XOR 
 -spec symmetric_difference(reference(), reference()) -> reference().
 symmetric_difference(_Bitset1, _Bitset2) ->
+    erlang:nif_error({nif_not_loaded, ?MODULE}).
+
+-spec symmetric_difference_count(reference(), reference()) -> non_neg_integer().
+symmetric_difference_count(_Bitset1, _Bitset2) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
 -spec set_by_list(reference(), [non_neg_integer()]) -> reference().

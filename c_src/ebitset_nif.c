@@ -254,6 +254,38 @@ ENIF(difference) {
     return ret;
 }
 
+ENIF(difference_count) {
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    cbs_context_t *s1 = NULL;
+    cbs_context_t *s2 = NULL;
+    if (argc != 2 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
+            !enif_get_resource(env, argv[1], res_type, (void**)&s2))
+        return enif_make_badarg(env);
+
+    if (s1 == s2) {
+        WARN("two same bitset, count 0");
+        return enif_make_uint(env, 0);
+    }
+
+    cbs_context_t *res1 = NULL, *res2 = NULL;
+    if ((uintptr_t)s1->rwlock < (uintptr_t)s2->rwlock) {
+        res1 = s1;
+        res2 = s2;
+    } 
+    else {
+        res1 = s2;
+        res2 = s1;
+    }
+    // TODO: we have to use ERL_NIF_THR_DIRTY_CPU_SCHEDULER 
+    enif_rwlock_rlock(res1->rwlock);
+    enif_rwlock_rlock(res2->rwlock);
+    uint32_t uc = bitset_difference_count(s1->b, s2->b);
+    enif_rwlock_runlock(res2->rwlock);
+    enif_rwlock_runlock(res1->rwlock);
+    return enif_make_uint(env, uc);
+}
+
 ENIF(symmetric_difference) {
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
     cbs_context_t *s1 = NULL;
@@ -286,6 +318,38 @@ ENIF(symmetric_difference) {
     ERL_NIF_TERM ret = enif_make_resource(env, res);
     enif_release_resource(res);
     return ret;
+}
+
+ENIF(symmetric_difference_count) {
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    cbs_context_t *s1 = NULL;
+    cbs_context_t *s2 = NULL;
+    if (argc != 2 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
+            !enif_get_resource(env, argv[1], res_type, (void**)&s2))
+        return enif_make_badarg(env);
+
+    if (s1 == s2) {
+        WARN("two same bitset, count 0");
+        return enif_make_uint(env, 0);
+    }
+
+    cbs_context_t *res1 = NULL, *res2 = NULL;
+    if ((uintptr_t)s1->rwlock < (uintptr_t)s2->rwlock) {
+        res1 = s1;
+        res2 = s2;
+    } 
+    else {
+        res1 = s2;
+        res2 = s1;
+    }
+    // TODO: we have to use ERL_NIF_THR_DIRTY_CPU_SCHEDULER 
+    enif_rwlock_rlock(res1->rwlock);
+    enif_rwlock_rlock(res2->rwlock);
+    uint32_t uc = bitset_symmetric_difference_count(s1->b, s2->b);
+    enif_rwlock_runlock(res2->rwlock);
+    enif_rwlock_runlock(res1->rwlock);
+    return enif_make_uint(env, uc);
 }
 
 ENIF(count) {
@@ -433,7 +497,9 @@ static ErlNifFunc nif_funcs[] = {
     {"intersection", 2, intersection},
     {"intersects", 2, intersects},
     {"difference", 2, difference},
+    {"difference_count", 2, difference_count},
     {"symmetric_difference", 2, symmetric_difference},
+    {"symmetric_difference_count", 2, symmetric_difference_count},
     {"set_by_rawbinary", 2, set_by_rawbinary},
     {"unset",   2, unset},
     {"set",   2, set},

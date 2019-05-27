@@ -148,7 +148,7 @@ void bitset_inplace_difference(bitset_t * restrict b1, const bitset_t * restrict
 int32_t  bitset_difference_count(const bitset_t *restrict b1, const bitset_t * restrict b2) ;
 
 /* compute the symmetric difference in-place (to b1), return true if successful, to generate a new bitset first call bitset_copy */
-bool bitset_inplace_symmetric_difference(bitset_t * restrict b1, const bitset_t * restrict b2);
+void bitset_inplace_symmetric_difference(bitset_t * restrict b1, const bitset_t * restrict b2);
 
 /* compute the size of the symmetric difference  */
 int32_t  bitset_symmetric_difference_count(const bitset_t *restrict b1, const bitset_t * restrict b2);

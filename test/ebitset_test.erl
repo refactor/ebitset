@@ -33,6 +33,26 @@ test_two() ->
     ebitset:set(S2, 4),
     ?_assertEqual(5, ebitset:count(ebitset:union(S1,S2))).
 
+op_test_() ->
+    [test_difference(), test_difference1(), test_difference2()].
+
+test_difference() ->
+    S1 = ebitset:new(),
+    S2 = ebitset:new(),
+    ?_assertEqual(0, ebitset:difference_count(S1, S2)).
+
+test_difference1() ->
+    S1 = ebitset:new(),
+    S2 = ebitset:new(),
+    ebitset:set(S2, 3),
+    ?_assertEqual(0, ebitset:difference_count(S1, S2)).
+
+test_difference2() ->
+    S1 = ebitset:new(),
+    S2 = ebitset:new(),
+    ebitset:set(S1, 3),
+    ?_assertEqual(1, ebitset:difference_count(S1, S2)).
+
 multiset([], S) ->
     S;
 multiset([H|L], S) ->
@@ -84,14 +104,35 @@ prop_union_count() ->
 prop_intersection() ->
     ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(intersection(L1,L2)) == ebitset:count(ebitset:intersection(ebitset:new(L1), multiset(L2)))).
 
+prop_intersection_zero() ->
+    ?FORALL(L, list(bitile_idx_range(?BITSZ)), 0 == ebitset:count(ebitset:intersection(ebitset:new(L), ebitset:new()))).
+
 prop_intersects() ->
     ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, (length(intersection(L1,L2)) > 0) == ebitset:intersects(multiset(L1), ebitset:new(L2))).
 
 prop_difference() ->
     ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(difference(L1,L2)) == ebitset:count(ebitset:difference(multiset(L1), ebitset:new(L2)))).
 
+prop_difference_count() ->
+    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(difference(L1,L2)) == ebitset:difference_count(multiset(L1), ebitset:new(L2))).
+
+prop_difference_zero_count1() ->
+    ?FORALL(L, list(bitile_idx_range(?BITSZ)), 0 == ebitset:difference_count(ebitset:new(), multiset(L))).
+
+prop_difference_zero_count2() ->
+    ?FORALL(L, list(bitile_idx_range(?BITSZ)), length(lists:usort(L)) == ebitset:difference_count(ebitset:new(L), ebitset:new())).
+
 prop_symmetric_difference() ->
     ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(symmetric_difference(L1,L2)) == ebitset:count(ebitset:symmetric_difference(multiset(L1), ebitset:new(L2)))).
+
+prop_symmetric_difference_count() ->
+    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(symmetric_difference(L1,L2)) == ebitset:symmetric_difference_count(multiset(L1), ebitset:new(L2))).
+
+prop_symmetric_difference_zero_count() ->
+    ?FORALL(L, list(bitile_idx_range(?BITSZ)), 0 == ebitset:symmetric_difference_count(multiset(L), ebitset:new(L))).
+
+prop_symmetric_difference_same_count() ->
+    ?FORALL(L, list(bitile_idx_range(?BITSZ)), length(lists:usort(L)) == ebitset:symmetric_difference_count(multiset(L), ebitset:new())).
 
 prop_minimum() ->
     ?FORALL(L, list(bitile_idx_range(?BITSZ)), min(L) == ebitset:minimum(ebitset:intersection(allset(?BITSZ), ebitset:new(L)))).
