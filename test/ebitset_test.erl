@@ -60,6 +60,11 @@ intersection(L1, L2) ->
 difference(L1, L2) -> 
     L = lists:usort(L1),
     lists:subtract(L, L2).
+symmetric_difference(L1, L2) ->
+    LL1 = lists:usort(L1),
+    LL2 = lists:usort(L2),
+    LL = union(LL1, LL2),
+    lists:subtract(LL, intersection(LL1, LL2)).
 
 prop_set_by_list() ->
     ?FORALL(L, list(bitile_idx_range(?BITSZ)), length(lists:usort(L)) == ebitset:count(ebitset:new(L))).
@@ -84,6 +89,9 @@ prop_intersects() ->
 
 prop_difference() ->
     ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(difference(L1,L2)) == ebitset:count(ebitset:difference(multiset(L1), ebitset:new(L2)))).
+
+prop_symmetric_difference() ->
+    ?FORALL({L1, L2}, {list(bitile_idx_range(?BITSZ)), list(bitile_idx_range(?BITSZ))}, length(symmetric_difference(L1,L2)) == ebitset:count(ebitset:symmetric_difference(multiset(L1), ebitset:new(L2)))).
 
 prop_minimum() ->
     ?FORALL(L, list(bitile_idx_range(?BITSZ)), min(L) == ebitset:minimum(ebitset:intersection(allset(?BITSZ), ebitset:new(L)))).

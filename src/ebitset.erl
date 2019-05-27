@@ -7,6 +7,7 @@
 -export([intersection/2]).
 -export([intersects/2]).
 -export([difference/2]).
+-export([symmetric_difference/2]).
 -export([count/1]).
 -export([minimum/1]).
 -export([maximum/1]).
@@ -47,6 +48,7 @@ from_binary(_Bin) ->
 copy(_Bitset) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
+%% OR
 -spec union(reference(), reference()) -> reference().
 union(_Bitset1, _Bitset2) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
@@ -59,12 +61,18 @@ union_count(_Bitset1, _Bitset2) ->
 intersection(_Bitset1, _Bitset2) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
+%% AND
 -spec intersects(reference(), reference()) -> boolean().
 intersects(_Bitset1, _Bitset2) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
 -spec difference(reference(), reference()) -> reference().
 difference(_Bitset1, _Bitset2) ->
+    erlang:nif_error({nif_not_loaded, ?MODULE}).
+
+%% XOR 
+-spec symmetric_difference(reference(), reference()) -> reference().
+symmetric_difference(_Bitset1, _Bitset2) ->
     erlang:nif_error({nif_not_loaded, ?MODULE}).
 
 -spec set_by_list(reference(), [non_neg_integer()]) -> reference().

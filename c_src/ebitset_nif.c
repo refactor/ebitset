@@ -254,6 +254,40 @@ ENIF(difference) {
     return ret;
 }
 
+ENIF(symmetric_difference) {
+    ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
+    cbs_context_t *s1 = NULL;
+    cbs_context_t *s2 = NULL;
+    if (argc != 2 ||
+            !enif_get_resource(env, argv[0], res_type, (void**)&s1) ||
+            !enif_get_resource(env, argv[1], res_type, (void**)&s2))
+        return enif_make_badarg(env);
+
+    if (s1 == s2) {
+        cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
+        res->rwlock = enif_rwlock_create("bitset-rwlock");
+        res->b = bitset_create();
+        ERL_NIF_TERM ret = enif_make_resource(env, res);
+        enif_release_resource(res);
+        return ret;
+    }
+
+    R_LOCK(symmetric_difference, s1);
+    bitset_t* newbitset = bitset_copy(s1->b);
+    R_UNLOCK(s1);
+
+    R_LOCK(symmetric_difference, s2);
+    bitset_inplace_symmetric_difference(newbitset, s2->b);
+    R_UNLOCK(s2);
+
+    cbs_context_t *res = (cbs_context_t*)enif_alloc_resource(res_type, sizeof(*res));
+    res->rwlock = enif_rwlock_create("bitset-rwlock");
+    res->b = newbitset;
+    ERL_NIF_TERM ret = enif_make_resource(env, res);
+    enif_release_resource(res);
+    return ret;
+}
+
 ENIF(count) {
     cbs_context_t *res = NULL;
     ErlNifResourceType* res_type = (ErlNifResourceType*)enif_priv_data(env);
@@ -399,6 +433,7 @@ static ErlNifFunc nif_funcs[] = {
     {"intersection", 2, intersection},
     {"intersects", 2, intersects},
     {"difference", 2, difference},
+    {"symmetric_difference", 2, symmetric_difference},
     {"set_by_rawbinary", 2, set_by_rawbinary},
     {"unset",   2, unset},
     {"set",   2, set},
