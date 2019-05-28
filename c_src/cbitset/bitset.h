@@ -59,6 +59,8 @@ static inline int32_t bitset_size_in_words(const bitset_t *bitset) {
   return BITILE_ARRAYSIZE;
 }
 
+size_t bitset_extract_setbits(const uint64_t *bitset, const size_t length, void *vout);
+
 static inline void bitset_set_list(bitset_t *bitset, const uint32_t *list, uint32_t length) {
     uint32_t offset, pos, index;
     uint64_t load, newload;

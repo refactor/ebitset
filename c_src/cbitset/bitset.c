@@ -201,3 +201,23 @@ int32_t bitset_symmetric_difference_count(const bitset_t *restrict b1, const bit
     return answer;
 }
 
+size_t bitset_extract_setbits(const uint64_t *bitset, const size_t length, void *vout) {
+    uint32_t base = 0;
+    int outpos = 0;
+    uint32_t *out = (uint32_t *)vout;
+    for (size_t i = 0; i < length; ++i) {
+        uint64_t w = bitset[i];
+        while (w != 0) {
+            uint64_t t = w & (~w + 1); // on x64, should compile to BLSI (careful: the Intel compiler seems to fail)
+            int r = __builtin_ctzll(w); // on x64, should compile to TZCNT
+            uint32_t val = r + base;
+            memcpy(out + outpos, &val,
+                   sizeof(uint32_t));  // should be compiled as a MOV on x64
+            outpos++;
+            w ^= t;
+        }
+        base += 64;
+    }
+    return outpos;
+}
+
